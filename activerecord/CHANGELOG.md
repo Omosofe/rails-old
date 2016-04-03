@@ -1,6 +1,40 @@
+*   Delegate `empty?`, `none?` and `one?`. Now they can be invoked as model class methods.
+
+    Example:
+
+        # When no record is found on the table
+        Topic.empty? # => true
+        Topic.none?  # => true
+
+        # When only one record is found on the table
+        Topic.one?   # => true
+
+    *Kenta Shirai*
+
+*   The form builder now properly displays values when passing a proc form
+    default to the attributes API.
+
+    Fixes #24249.
+
+    *Sean Griffin*
+
+*   The schema cache is now cleared after the `db:migrate` task is run.
+
+    Closes #24273.
+
+    *Chris Arcand*
+
+*   MySQL: strict mode respects other SQL modes rather than overwriting them.
+    Setting `strict: true` adds `STRICT_ALL_TABLES` to `sql_mode`. Setting
+    `strict: false` removes `STRICT_TRANS_TABLES`, `STRICT_ALL_TABLES`, and
+    `TRADITIONAL` from `sql_mode`.
+
+    *Ryuta Kamizono*
+
 *   Execute default_scope defined by abstract class in the context of subclass.
 
-    Fixes #23413 & #10658
+    Fixes #23413.
+    Fixes #10658.
 
     *Mehmet Emin İNAÇ*
 
@@ -523,13 +557,13 @@
 *   Add option to index errors in nested attributes
 
     For models which have nested attributes, errors within those models will
-    now be indexed if :index_errors is specified when defining a
+    now be indexed if `:index_errors` is specified when defining a
     has_many relationship, or if its set in the global config.
 
     Example:
 
         class Guitar < ActiveRecord::Base
-          has_many :tuning_pegs
+          has_many :tuning_pegs, index_errors: true
           accepts_nested_attributes_for :tuning_pegs
         end
 

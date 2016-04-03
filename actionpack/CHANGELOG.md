@@ -1,3 +1,37 @@
+*   ETags: Introduce `Response#strong_etag=` and `#weak_etag=` and analogous
+    options for `fresh_when` and `stale?`. `Response#etag=` sets a weak ETag.
+
+    Strong ETags are desirable when you're serving byte-for-byte identical
+    responses that support Range requests, like PDFs or videos (typically
+    done by reproxying the response from a backend storage service).
+    Also desirable when fronted by some CDNs that support strong ETags
+    only, like Akamai.
+
+    *Jeremy Daer*
+
+*   ETags: No longer strips quotes (") from ETag values before comparing them.
+    Quotes are significant, part of the ETag. A quoted ETag and an unquoted
+    one are not the same entity.
+
+    *Jeremy Daer*
+
+*   ETags: Support `If-None-Match: *`. Rarely useful for GET requests; meant
+    to provide some optimistic concurrency control for PUT requests.
+
+    *Jeremy Daer*
+
+*   `ActionDispatch::ParamsParser` is deprecated and was removed from the middleware
+    stack. To configure the parameter parsers use `ActionDispatch::Request.parameter_parsers=`.
+
+    *tenderlove*
+
+*   When a `respond_to` collector with a block doesn't have a response, then
+    a `:no_content` response should be rendered.  This brings the default
+    rendering behavior introduced by https://github.com/rails/rails/issues/19036
+    to controller methods employing `respond_to`.
+
+    *Justin Coyne*
+
 *   Add `ActionController::Parameters#dig` on Ruby 2.3 and greater, which
     behaves the same as `Hash#dig`.
 
@@ -23,19 +57,19 @@
 
     First, if a template exists for the controller action, it is rendered.
     This template lookup takes into account the action name, locales, format,
-    variant, template handlers, etc. (see +render+ for details).
+    variant, template handlers, etc. (see `render` for details).
 
     Second, if other templates exist for the controller action but is not in
-    the right format (or variant, etc.), an <tt>ActionController::UnknownFormat</tt>
+    the right format (or variant, etc.), an `ActionController::UnknownFormat`
     is raised. The list of available templates is assumed to be a complete
     enumeration of all the possible formats (or variants, etc.); that is,
     having only HTML and JSON templates indicate that the controller action is
     not meant to handle XML requests.
 
     Third, if the current request is an "interactive" browser request (the user
-    navigated here by entering the URL in the address bar, submiting a form,
+    navigated here by entering the URL in the address bar, submitting a form,
     clicking on a link, etc. as opposed to an XHR or non-browser API request),
-    <tt>ActionView::UnknownFormat</tt> is raised to display a helpful error
+    `ActionView::UnknownFormat` is raised to display a helpful error
     message.
 
     Finally, it falls back to the same "204 No Content" behavior as API controllers.
@@ -44,7 +78,7 @@
 
 ## Rails 5.0.0.beta3 (February 24, 2016) ##
 
-*   Add application/gzip as a default mime type.
+*   Add "application/gzip" as a default mime type.
 
     *Mehmet Emin İNAÇ*
 
@@ -95,7 +129,7 @@
 
     *Kasper Timm Hansen*
 
-*   Add image/svg+xml as a default mime type.
+*   Add "image/svg+xml" as a default mime type.
 
     *DHH*
 
@@ -108,7 +142,7 @@
 
     See #18902.
 
-    *Anton Davydov* & *Vipul A M*
+    *Anton Davydov*, *Vipul A M*
 
 *   Response etags to always be weak: Prefixes 'W/' to value returned by
    `ActionDispatch::Http::Cache::Response#etag=`, such that etags set in
@@ -140,11 +174,7 @@
 
 *   Add option for per-form CSRF tokens.
 
-    *Greg Ose & Ben Toews*
-
-*   Add tests and documentation for `ActionController::Renderers::use_renderers`.
-
-    *Benjamin Fleischer*
+    *Greg Ose*, *Ben Toews*
 
 *   Fix `ActionController::Parameters#convert_parameters_to_hashes` to return filtered
     or unfiltered values based on from where it is called, `to_h` or `to_unsafe_h`

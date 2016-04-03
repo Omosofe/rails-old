@@ -1,3 +1,8 @@
+*   Make `rails restart` command work with Puma by passing the restart command
+    which Puma can use to restart rails server.
+
+    *Prathamesh Sonpatki*
+
 *   The application generator writes a new file `config/spring.rb`, which tells
     Spring to watch additional common files.
 
@@ -42,7 +47,9 @@
 
     *Xavier Noria*
 
-*   Add dummy files for apple-touch-icon.png and apple-touch-icon.png. GH#23427
+*   Add dummy files for apple-touch-icon.png and apple-touch-icon.png.
+
+    See #23427.
 
     *Alexey Zabelin*
 

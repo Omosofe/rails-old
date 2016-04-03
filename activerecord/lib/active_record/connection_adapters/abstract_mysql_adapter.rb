@@ -1,6 +1,7 @@
 require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/mysql/column'
 require 'active_record/connection_adapters/mysql/explain_pretty_printer'
+require 'active_record/connection_adapters/mysql/quoting'
 require 'active_record/connection_adapters/mysql/schema_creation'
 require 'active_record/connection_adapters/mysql/schema_definitions'
 require 'active_record/connection_adapters/mysql/schema_dumper'
@@ -11,6 +12,7 @@ require 'active_support/core_ext/string/strip'
 module ActiveRecord
   module ConnectionAdapters
     class AbstractMysqlAdapter < AbstractAdapter
+      include MySQL::Quoting
       include MySQL::ColumnDumper
       include Savepoints
 
@@ -54,7 +56,6 @@ module ActiveRecord
 
       def initialize(connection, logger, connection_options, config)
         super(connection, logger, config)
-        @quoted_column_names, @quoted_table_names = {}, {}
 
         @visitor = Arel::Visitors::MySQL.new self
 
@@ -153,8 +154,8 @@ module ActiveRecord
         raise NotImplementedError
       end
 
-      def new_column(field, default, sql_type_metadata = nil, null = true, default_function = nil, collation = nil) # :nodoc:
-        MySQL::Column.new(field, default, sql_type_metadata, null, default_function, collation)
+      def new_column(field, default, sql_type_metadata, null, table_name, default_function = nil, collation = nil) # :nodoc:
+        MySQL::Column.new(field, default, sql_type_metadata, null, table_name, default_function, collation)
       end
 
       # Must return the MySQL error number from the exception, if the exception has an
@@ -163,23 +164,9 @@ module ActiveRecord
         raise NotImplementedError
       end
 
+      #--
       # QUOTING ==================================================
-
-      def _quote(value) # :nodoc:
-        if value.is_a?(Type::Binary::Data)
-          "x'#{value.hex}'"
-        else
-          super
-        end
-      end
-
-      def quote_column_name(name) #:nodoc:
-        @quoted_column_names[name] ||= "`#{name.to_s.gsub('`', '``')}`"
-      end
-
-      def quote_table_name(name) #:nodoc:
-        @quoted_table_names[name] ||= quote_column_name(name).gsub('.', '`.`')
-      end
+      #++
 
       def quoted_true
         QUOTED_TRUE
@@ -421,16 +408,15 @@ module ActiveRecord
 
       # Returns an array of +Column+ objects for the table specified by +table_name+.
       def columns(table_name) # :nodoc:
-        sql = "SHOW FULL FIELDS FROM #{quote_table_name(table_name)}"
-        execute_and_free(sql, 'SCHEMA') do |result|
-          each_hash(result).map do |field|
-            type_metadata = fetch_type_metadata(field[:Type], field[:Extra])
-            if type_metadata.type == :datetime && field[:Default] == "CURRENT_TIMESTAMP"
-              new_column(field[:Field], nil, type_metadata, field[:Null] == "YES", field[:Default], field[:Collation])
-            else
-              new_column(field[:Field], field[:Default], type_metadata, field[:Null] == "YES", nil, field[:Collation])
-            end
+        table_name = table_name.to_s
+        column_definitions(table_name).map do |field|
+          type_metadata = fetch_type_metadata(field[:Type], field[:Extra])
+          if type_metadata.type == :datetime && field[:Default] == "CURRENT_TIMESTAMP"
+            default, default_function = nil, field[:Default]
+          else
+            default, default_function = field[:Default], nil
           end
+          new_column(field[:Field], default, type_metadata, field[:Null] == "YES", table_name, default_function, field[:Collation])
         end
       end
 
@@ -608,10 +594,10 @@ module ActiveRecord
       end
 
       def case_sensitive_comparison(table, attribute, column, value)
-        if value.nil? || column.case_sensitive?
-          super
-        else
+        if !value.nil? && column.collation && !column.case_sensitive?
           table[attribute].eq(Arel::Nodes::Bin.new(Arel::Nodes::BindParam.new))
+        else
+          super
         end
       end
 
@@ -847,9 +833,19 @@ module ActiveRecord
         # Make MySQL reject illegal values rather than truncating or blanking them, see
         # http://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_strict_all_tables
         # If the user has provided another value for sql_mode, don't replace it.
-        unless variables.has_key?('sql_mode') || defaults.include?(@config[:strict])
-          variables['sql_mode'] = strict_mode? ? 'STRICT_ALL_TABLES' : ''
+        if sql_mode = variables.delete('sql_mode')
+          sql_mode = quote(sql_mode)
+        elsif !defaults.include?(strict_mode?)
+          if strict_mode?
+            sql_mode = "CONCAT(@@sql_mode, ',STRICT_ALL_TABLES')"
+          else
+            sql_mode = "REPLACE(@@sql_mode, 'STRICT_TRANS_TABLES', '')"
+            sql_mode = "REPLACE(#{sql_mode}, 'STRICT_ALL_TABLES', '')"
+            sql_mode = "REPLACE(#{sql_mode}, 'TRADITIONAL', '')"
+          end
+          sql_mode = "CONCAT(#{sql_mode}, ',NO_AUTO_VALUE_ON_ZERO')"
         end
+        sql_mode_assignment = "@@SESSION.sql_mode = #{sql_mode}, " if sql_mode
 
         # NAMES does not have an equals sign, see
         # http://dev.mysql.com/doc/refman/5.7/en/set-statement.html#id944430
@@ -871,7 +867,13 @@ module ActiveRecord
         end.compact.join(', ')
 
         # ...and send them all in one query
-        @connection.query  "SET #{encoding} #{variable_assignments}"
+        @connection.query  "SET #{encoding} #{sql_mode_assignment} #{variable_assignments}"
+      end
+
+      def column_definitions(table_name) # :nodoc:
+        execute_and_free("SHOW FULL FIELDS FROM #{quote_table_name(table_name)}", 'SCHEMA') do |result|
+          each_hash(result)
+        end
       end
 
       def extract_foreign_key_action(structure, name, action) # :nodoc:

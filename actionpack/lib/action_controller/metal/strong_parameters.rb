@@ -184,6 +184,13 @@ module ActionController
     # Returns an unsafe, unfiltered
     # <tt>ActiveSupport::HashWithIndifferentAccess</tt> representation of this
     # parameter.
+    #
+    #   params = ActionController::Parameters.new({
+    #     name: 'Senjougahara Hitagi',
+    #     oddity: 'Heavy stone crab'
+    #   })
+    #   params.to_unsafe_h
+    #   # => {"name"=>"Senjougahara Hitagi", "oddity" => "Heavy stone crab"}
     def to_unsafe_h
       convert_parameters_to_hashes(@parameters, :to_unsafe_h)
     end
@@ -814,7 +821,8 @@ module ActionController
   #   end
   #
   # In order to use <tt>accepts_nested_attributes_for</tt> with Strong \Parameters, you
-  # will need to specify which nested attributes should be whitelisted.
+  # will need to specify which nested attributes should be whitelisted. You might want
+  # to allow +:id+ and +:_destroy+, see ActiveRecord::NestedAttributes for more information.
   #
   #   class Person
   #     has_many :pets
@@ -834,7 +842,7 @@ module ActionController
   #         # It's mandatory to specify the nested attributes that should be whitelisted.
   #         # If you use `permit` with just the key that points to the nested attributes hash,
   #         # it will return an empty hash.
-  #         params.require(:person).permit(:name, :age, pets_attributes: [ :name, :category ])
+  #         params.require(:person).permit(:name, :age, pets_attributes: [ :id, :name, :category ])
   #       end
   #   end
   #

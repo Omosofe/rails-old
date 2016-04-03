@@ -1,8 +1,17 @@
+*   Add `String#upcase_first` method.
+
+    *Glauco Custódio*, *bogdanvlviv*
+
+*   Prevent `Marshal.load` from looping infinitely when trying to autoload a constant
+    which resolves to a different name.
+
+    *Olek Janiszewski*
+
 *   Deprecate `Module.local_constants`. Please use `Module.constants(false)` instead.
 
     *Yuichiro Kaneko*
 
-*   Publish ActiveSupport::Executor and ActiveSupport::Reloader APIs to allow
+*   Publish `ActiveSupport::Executor` and `ActiveSupport::Reloader` APIs to allow
     components and libraries to manage, and participate in, the execution of
     application code, and the application reloading process.
 
@@ -20,7 +29,7 @@
 
     *Tara Scherner de la Fuente*
 
-*   Make `benchmark('something', silence: true)` actually work
+*   Make `benchmark('something', silence: true)` actually work.
 
     *DHH*
 
@@ -41,7 +50,7 @@
 
 ## Rails 5.0.0.beta2 (February 01, 2016) ##
 
-*   Change number_to_currency behavior for checking negativity.
+*   Change `number_to_currency` behavior for checking negativity.
 
     Used `to_f.negative` instead of using `to_f.phase` for checking negativity
     of a number in number_to_currency helper.
